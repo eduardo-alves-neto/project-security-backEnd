@@ -1,78 +1,72 @@
 const express = require('express');
 const router = express.Router();
-const Cliente = require('../models/Cliente');
-const { auth, adminAuth } = require('../middleware/auth');
+const ClienteService = require('../services/ClienteService');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// Listar todos os clientes
-router.get('/', auth, async (req, res) => {
-  try {
-    const clientes = await Cliente.find({ ativo: true });
-    res.json(clientes);
-  } catch (error) {
-    res.status(500).json({ mensagem: 'Erro ao buscar clientes', erro: error.message });
-  }
-});
+// Middleware de autenticação para todas as rotas
+router.use(authMiddleware);
 
-// Buscar cliente por ID
-router.get('/:id', auth, async (req, res) => {
-  try {
-    const cliente = await Cliente.findOne({ _id: req.params.id, ativo: true });
-    if (!cliente) {
-      return res.status(404).json({ mensagem: 'Cliente não encontrado' });
+// Rota para criar cliente
+router.post('/', async (req, res) => {
+    try {
+        const cliente = await ClienteService.criarCliente(req.body);
+        res.status(201).json(cliente);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
     }
-    res.json(cliente);
-  } catch (error) {
-    res.status(500).json({ mensagem: 'Erro ao buscar cliente', erro: error.message });
-  }
 });
 
-// Criar novo cliente
-router.post('/', auth, async (req, res) => {
-  try {
-    const cliente = new Cliente(req.body);
-    await cliente.save();
-    res.status(201).json(cliente);
-  } catch (error) {
-    res.status(500).json({ mensagem: 'Erro ao criar cliente', erro: error.message });
-  }
-});
-
-// Atualizar cliente
-router.put('/:id', auth, async (req, res) => {
-  try {
-    const cliente = await Cliente.findOneAndUpdate(
-      { _id: req.params.id, ativo: true },
-      req.body,
-      { new: true, runValidators: true }
-    );
-    
-    if (!cliente) {
-      return res.status(404).json({ mensagem: 'Cliente não encontrado' });
+// Rota para listar todos os clientes
+router.get('/', async (req, res) => {
+    try {
+        const clientes = await ClienteService.listarClientes();
+        res.json(clientes);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
-    
-    res.json(cliente);
-  } catch (error) {
-    res.status(500).json({ mensagem: 'Erro ao atualizar cliente', erro: error.message });
-  }
 });
 
-// Excluir cliente (soft delete)
-router.delete('/:id', auth, async (req, res) => {
-  try {
-    const cliente = await Cliente.findOneAndUpdate(
-      { _id: req.params.id, ativo: true },
-      { ativo: false },
-      { new: true }
-    );
-    
-    if (!cliente) {
-      return res.status(404).json({ mensagem: 'Cliente não encontrado' });
+// Rota para buscar cliente por ID
+router.get('/:id', async (req, res) => {
+    try {
+        const cliente = await ClienteService.encontrarClientePorId(req.params.id);
+        if (!cliente) {
+            return res.status(404).json({ message: 'Cliente não encontrado' });
+        }
+        res.json(cliente);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
-    
-    res.json({ mensagem: 'Cliente excluído com sucesso' });
-  } catch (error) {
-    res.status(500).json({ mensagem: 'Erro ao excluir cliente', erro: error.message });
-  }
+});
+
+// Rota para atualizar cliente
+router.put('/:id', async (req, res) => {
+    try {
+        const cliente = await ClienteService.atualizarCliente(req.params.id, req.body);
+        res.json(cliente);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+// Rota para deletar cliente
+router.delete('/:id', async (req, res) => {
+    try {
+        await ClienteService.deletarCliente(req.params.id);
+        res.json({ message: 'Cliente deletado com sucesso' });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+// Rota para listar clientes por status
+router.get('/status/:status', async (req, res) => {
+    try {
+        const clientes = await ClienteService.listarClientesPorStatus(req.params.status);
+        res.json(clientes);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 });
 
 module.exports = router; 

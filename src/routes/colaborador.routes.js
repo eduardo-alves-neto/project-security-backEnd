@@ -1,78 +1,82 @@
 const express = require('express');
 const router = express.Router();
-const Colaborador = require('../models/Colaborador');
-const { auth, adminAuth } = require('../middleware/auth');
+const ColaboradorService = require('../services/ColaboradorService');
+const authMiddleware = require('../middleware/authMiddleware');
 
-// Listar todos os colaboradores (apenas admin)
-router.get('/', adminAuth, async (req, res) => {
-  try {
-    const colaboradores = await Colaborador.find({ ativo: true });
-    res.json(colaboradores);
-  } catch (error) {
-    res.status(500).json({ mensagem: 'Erro ao buscar colaboradores', erro: error.message });
-  }
-});
+// Middleware de autenticação para todas as rotas
+router.use(authMiddleware);
 
-// Buscar colaborador por ID (apenas admin)
-router.get('/:id', adminAuth, async (req, res) => {
-  try {
-    const colaborador = await Colaborador.findOne({ _id: req.params.id, ativo: true });
-    if (!colaborador) {
-      return res.status(404).json({ mensagem: 'Colaborador não encontrado' });
+// Rota para criar colaborador
+router.post('/', async (req, res) => {
+    try {
+        const colaborador = await ColaboradorService.criarColaborador(req.body);
+        res.status(201).json(colaborador);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
     }
-    res.json(colaborador);
-  } catch (error) {
-    res.status(500).json({ mensagem: 'Erro ao buscar colaborador', erro: error.message });
-  }
 });
 
-// Criar novo colaborador (apenas admin)
-router.post('/', adminAuth, async (req, res) => {
-  try {
-    const colaborador = new Colaborador(req.body);
-    await colaborador.save();
-    res.status(201).json(colaborador);
-  } catch (error) {
-    res.status(500).json({ mensagem: 'Erro ao criar colaborador', erro: error.message });
-  }
-});
-
-// Atualizar colaborador (apenas admin)
-router.put('/:id', adminAuth, async (req, res) => {
-  try {
-    const colaborador = await Colaborador.findOneAndUpdate(
-      { _id: req.params.id, ativo: true },
-      req.body,
-      { new: true, runValidators: true }
-    );
-    
-    if (!colaborador) {
-      return res.status(404).json({ mensagem: 'Colaborador não encontrado' });
+// Rota para listar todos os colaboradores
+router.get('/', async (req, res) => {
+    try {
+        const colaboradores = await ColaboradorService.listarColaboradores();
+        res.json(colaboradores);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
-    
-    res.json(colaborador);
-  } catch (error) {
-    res.status(500).json({ mensagem: 'Erro ao atualizar colaborador', erro: error.message });
-  }
 });
 
-// Excluir colaborador (soft delete, apenas admin)
-router.delete('/:id', adminAuth, async (req, res) => {
-  try {
-    const colaborador = await Colaborador.findOneAndUpdate(
-      { _id: req.params.id, ativo: true },
-      { ativo: false },
-      { new: true }
-    );
-    
-    if (!colaborador) {
-      return res.status(404).json({ mensagem: 'Colaborador não encontrado' });
+// Rota para buscar colaborador por ID
+router.get('/:id', async (req, res) => {
+    try {
+        const colaborador = await ColaboradorService.encontrarColaboradorPorId(req.params.id);
+        if (!colaborador) {
+            return res.status(404).json({ message: 'Colaborador não encontrado' });
+        }
+        res.json(colaborador);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
     }
-    
-    res.json({ mensagem: 'Colaborador excluído com sucesso' });
-  } catch (error) {
-    res.status(500).json({ mensagem: 'Erro ao excluir colaborador', erro: error.message });
-  }
+});
+
+// Rota para atualizar colaborador
+router.put('/:id', async (req, res) => {
+    try {
+        const colaborador = await ColaboradorService.atualizarColaborador(req.params.id, req.body);
+        res.json(colaborador);
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+// Rota para deletar colaborador
+router.delete('/:id', async (req, res) => {
+    try {
+        await ColaboradorService.deletarColaborador(req.params.id);
+        res.json({ message: 'Colaborador deletado com sucesso' });
+    } catch (error) {
+        res.status(400).json({ message: error.message });
+    }
+});
+
+// Rota para listar colaboradores por status
+router.get('/status/:status', async (req, res) => {
+    try {
+        const colaboradores = await ColaboradorService.listarColaboradoresPorStatus(req.params.status);
+        res.json(colaboradores);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+// Rota para listar colaboradores por cargo
+router.get('/cargo/:cargo', async (req, res) => {
+    try {
+        const colaboradores = await ColaboradorService.listarColaboradoresPorCargo(req.params.cargo);
+        res.json(colaboradores);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 });
 
 module.exports = router; 
